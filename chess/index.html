@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chess Probability: Piece by Piece</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3f1fb;--bg2:#e2ecfb;--ink:#1c1933;--mut:#6b6788;--card:rgba(255,255,255,.72);--lt:#e9e5fb;--dk:#9a90dc;--ac:#f2a516;--pawn:#0f9f8a;--kn:#7a4de0;--ln:rgba(90,80,160,.16);--up:#0f9f8a;--dn:#d6455d;--sh:0 18px 50px rgba(70,55,150,.18);
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1020;--bg2:#1a1240;--ink:#eceafc;--mut:#9a98bd;--card:rgba(255,255,255,.06);--lt:#b9c0ee;--dk:#4a5aa8;--ac:#fbbf24;--pawn:#5eead4;--kn:#b79cff;--ln:rgba(255,255,255,.12);--up:#5eead4;--dn:#ff8fa3;--sh:0 20px 60px rgba(0,0,0,.5)}}
+:root[data-theme="dark"]{--bg:#0b1020;--bg2:#1a1240;--ink:#eceafc;--mut:#9a98bd;--card:rgba(255,255,255,.06);--lt:#b9c0ee;--dk:#4a5aa8;--ac:#fbbf24;--pawn:#5eead4;--kn:#b79cff;--ln:rgba(255,255,255,.12);--up:#5eead4;--dn:#ff8fa3;--sh:0 20px 60px rgba(0,0,0,.5)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;color:var(--ink);font:400 16px/1.55 "Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;
+background:radial-gradient(900px 500px at 8% -5%,color-mix(in srgb,var(--pawn) 22%,transparent),transparent 60%),radial-gradient(800px 520px at 100% 0%,color-mix(in srgb,var(--kn) 26%,transparent),transparent 60%),linear-gradient(160deg,var(--bg),var(--bg2)) fixed}
+main{max-width:1060px;margin:0 auto;padding:30px 18px 64px}
+h1{font-size:clamp(2.1rem,6vw,3.6rem);line-height:1.02;font-weight:800;margin:6px 0 12px;letter-spacing:-.03em;background:linear-gradient(90deg,var(--pawn),var(--kn));-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font-size:1.1rem;margin:0 0 8px;font-weight:600}
+p{margin:0 0 10px;max-width:64ch}
+.mut{color:var(--mut)}.legend{font-size:.85rem;color:var(--mut)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0}
+.chip{display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border-radius:99px;background:var(--card);border:1px solid var(--ln);font-size:.85rem;font-weight:600;backdrop-filter:blur(8px)}
+.chip:before{content:"";width:10px;height:10px;border-radius:50%;background:var(--c);box-shadow:0 0 10px var(--c)}
+.top{display:grid;gap:26px;grid-template-columns:1fr;margin-top:22px}
+@media(min-width:860px){.top{grid-template-columns:minmax(300px,470px) minmax(0,1fr);align-items:start}}
+#board{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:repeat(8,minmax(0,1fr));aspect-ratio:1;width:100%;border-radius:20px;overflow:hidden;box-shadow:var(--sh),0 0 0 6px var(--card),0 0 0 7px var(--ln)}
+.sq{min-width:0;min-height:0;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;font-size:clamp(24px,6.4vw,44px);line-height:1;background:linear-gradient(145deg,var(--lt),color-mix(in srgb,var(--lt) 82%,#fff));border:0;padding:0;font-family:inherit;cursor:pointer;transition:filter .15s}
+.sq.d{background:linear-gradient(145deg,var(--dk),color-mix(in srgb,var(--dk) 80%,#000))}
+@media(hover:hover){.sq:hover{filter:brightness(1.08)}}
+.sq.last:after{content:"";position:absolute;inset:0;background:var(--ac);opacity:.32}
+.sq.sel{box-shadow:inset 0 0 0 3px var(--ac),inset 0 0 22px var(--ac)}
+.sq span{position:relative;z-index:1;filter:drop-shadow(0 3px 3px rgba(0,0,0,.35))}
+.sq .white{color:#fff;-webkit-text-stroke:1px rgba(20,15,50,.85)}
+.sq .black{color:#171330}
+.bg{position:absolute;z-index:2;left:1px;bottom:1px;opacity:.9;font:700 clamp(5px,1.3vw,7px) inherit;font-family:inherit;font-style:normal;background:linear-gradient(135deg,var(--pawn),var(--kn));color:#fff;padding:0 4px;border-radius:99px;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.dot{position:absolute;z-index:3;inset:0;display:flex;align-items:center;justify-content:center;font-size:clamp(7px,1.6vw,9px);font-weight:700;color:#fff}
+.dot i{padding:1px 5px;border-radius:99px;font-style:normal;box-shadow:0 0 8px currentColor,0 1px 3px rgba(0,0,0,.35)}
+.dot.pw{color:var(--pawn)}.dot.kn{color:var(--kn)}
+.dot.pw i{background:var(--pawn);color:#052b25}.dot.kn i{background:var(--kn);color:#fff}
+.ctl{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 10px}
+button.b{font:600 .92rem inherit;font-family:inherit;padding:9px 18px;border-radius:99px;border:1px solid var(--ln);background:var(--card);color:var(--ink);cursor:pointer;backdrop-filter:blur(8px);transition:transform .12s,box-shadow .12s}
+button.b:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(0,0,0,.15)}
+button.b#rnd,button.b.on{background:linear-gradient(135deg,var(--pawn),var(--kn));color:#fff;border-color:transparent}
+button:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+.card{background:var(--card);border:1px solid var(--ln);border-radius:20px;padding:18px 20px;margin-bottom:18px;box-shadow:var(--sh);backdrop-filter:blur(14px)}
+.row{display:grid;grid-template-columns:124px 1fr 96px;gap:10px;align-items:center;margin:7px 0;font-size:.85rem}
+.row .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trk{height:12px;background:var(--ln);border-radius:99px;overflow:hidden}
+.fill{position:relative;height:100%;border-radius:99px;transition:width .45s cubic-bezier(.3,.8,.3,1);box-shadow:0 0 12px currentColor}
+.fill:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.4),transparent)}
+.row .v{text-align:right;font-weight:600}
+.stack{display:flex;height:30px;border-radius:99px;overflow:hidden;margin:10px 0 6px;box-shadow:inset 0 0 0 1px var(--ln)}
+.stack span{display:flex;align-items:center;justify-content:center;font-size:.76rem;font-weight:600;color:#fff;min-width:0;overflow:hidden}
+.chg{display:flex;justify-content:space-between;gap:10px;font-size:.92rem;padding:6px 0;border-bottom:1px solid var(--ln)}
+.chg:last-of-type{border-bottom:0}
+.up{color:var(--up);font-weight:600}.dn{color:var(--dn);font-weight:600}
+#hist{font-size:.85rem;color:var(--mut);word-break:break-word;margin-top:8px}
+@media(prefers-reduced-motion:reduce){.fill,button.b{transition:none}}
+@media(max-width:420px){.row{grid-template-columns:100px 1fr 80px}}
+textarea{width:100%;font:400 .95rem/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;padding:12px 14px;border-radius:14px;border:1px solid var(--ln);background:var(--card);color:var(--ink);resize:vertical}
+textarea:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+#an{margin-top:26px}
+.sides{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));margin:12px 0}
+.side{border:1px solid var(--ln);border-radius:14px;padding:12px 14px}
+.side b{display:block;margin-bottom:4px}
+.side .n{font-size:1.2rem;font-weight:800;line-height:1.1}
+#chart{width:100%;height:120px;display:block;margin:6px 0;cursor:pointer}
+#chart rect{transition:opacity .2s}
+.nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.nav input{flex:1;min-width:140px;accent-color:var(--kn)}
+#plyinfo{font-weight:600;min-height:3em}
+.top>div{min-width:0}#board{max-width:100%;flex:none}
+#board[data-t="wood"]{--lt:#f0d9b5;--dk:#b58863}#board[data-t="mono"]{--lt:#ececec;--dk:#8c8c8c}
+button.b:disabled{opacity:.5;cursor:default}#km .b{font-size:.8rem;padding:6px 12px}
+.sq{contain:layout paint;-webkit-tap-highlight-color:transparent}.sq:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--ac)}.dot.cap{align-items:flex-start;justify-content:flex-end;padding:2px}.dot.cap i{opacity:.95}
+.rk,.fl{position:absolute;z-index:2;font:700 clamp(7px,1.7vw,10px)/1 "Bricolage Grotesque",system-ui,sans-serif;pointer-events:none}.rk{left:3px;top:2px}.fl{right:3px;bottom:2px}.sq .rk,.sq .fl{color:var(--dk)}.sq.d .rk,.sq.d .fl{color:var(--lt)}
+.sq.hint{box-shadow:inset 0 0 0 3px var(--pawn),inset 0 0 18px var(--pawn)}
+details{margin-top:14px;font-size:.9rem}summary{cursor:pointer;font-weight:600}details ol{padding-left:20px;margin:8px 0}details li{margin-bottom:6px}
+.gp{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));align-items:center}.ct{font-size:.85rem;font-weight:600;color:var(--mut);margin-bottom:6px}
+.dnt{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.dnt ul{list-style:none;margin:0;padding:0;font-size:.85rem}.dnt li{display:flex;align-items:center;gap:6px;margin:2px 0}.dnt li i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.sq.hm:before{content:"";position:absolute;inset:0;background:var(--pawn);opacity:calc(var(--h,0)*.7);z-index:0}
+</style>
+</head>
+<body>
+<main>
+<p><a href="../" style="color:var(--mut);font-weight:600;text-decoration:none">← Back to atharva.website</a></p>
+<h1>Chess probability, piece by piece</h1>
+<p class="mut">Assume the player picks a legal move completely at random. Every legal move is equally likely, so each piece's chance is its number of moves ÷ all legal moves. Make a move and watch every number change.</p>
+<div class="chips"><span class="chip" style="--c:var(--pawn)">Pawn</span><span class="chip" style="--c:var(--kn)">Other pieces</span><span class="chip" style="--c:var(--ac)">Last move</span></div>
+
+<section class="top">
+  <div>
+    <div class="ctl"><button class="b on" id="mR">Random player</button><button class="b" id="mS">Smart player</button></div><p class="legend" id="mnote"></p>
+    <div id="board" role="group" aria-label="Chess board"></div>
+    <div class="ctl">
+      <button class="b" id="rnd">Random move</button>
+      <button class="b" id="auto">Auto-play</button>
+      <button class="b" id="und">Undo</button>
+      <button class="b" id="rst">Reset</button><button class="b" id="flp">Flip board</button><button class="b" id="bth">Board: Indigo</button><button class="b" id="thm">Dark mode</button><button class="b" id="snd">Sound: off</button><button class="b" id="bnb">Board numbers: off</button>
+    </div>
+    <p class="legend">Tap a piece to see the chance of each of its moves, then tap a square to play it. Each piece's chance is listed on the right. Press Board numbers to also show them on the board.</p>
+    <div id="hist"></div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2 id="ttl"></h2>
+      <div id="stack"></div>
+      <div id="rows"></div>
+    </div>
+    <div class="card" id="gr"><h2>Graphs</h2>
+      <div class="gp"><div><div class="ct">Chance by piece type</div><div id="donut"></div></div><div><div class="ct">Legal moves at each turn</div><div id="lc"></div></div></div>
+      <div class="ctl"><button class="b" id="hmb">Heatmap: off</button></div><p class="legend" id="hml">Heatmap colors the board by how likely each square is to be the next landing square.</p></div>
+    <div class="card" id="chgbox"></div>
+    <div class="card" id="bm"><h2>Best move</h2><p class="mut">The built-in engine looks 3 half-moves ahead for the side to move and ranks the top 3 moves.</p><button class="b" id="bst">Find best move</button><div id="bmo" style="margin-top:10px"></div>
+      <details><summary>How are moves calculated?</summary><ol>
+      <li><b>Legal moves:</b> the chess rules (piece movement, check, castling, en passant, promotion) decide which moves are allowed. Each allowed move counts as 1.</li>
+      <li><b>Probability:</b> a move's chance = 1 ÷ number of legal moves. A piece's chance = its moves ÷ all moves. Smart mode adds extra weight to captures, center pawns, development, castling, checks and promotions.</li>
+      <li><b>Best move:</b> the engine tries every move, then every reply, then every reply to that (3 half-moves), and assumes both sides choose their best option. Each end position is scored: pawn 1, knight 3, bishop 3, rook 5, queen 9, plus small bonuses for center control, advanced pawns and developed pieces. Checkmate scores highest.</li>
+      <li><b>Limits:</b> this is a simple engine. It can miss deeper tactics and is much weaker than programs like Stockfish, so use it as a guide, not a final answer.</li></ol></details></div>
+    <div class="card" id="qz"><h2>Quick quiz</h2><p id="qq" class="mut"></p><div class="ctl" id="qo"></div><div id="qf" class="legend"></div></div>
+    <div class="card" id="sm"><h2>Simulate random games</h2><p class="mut">Play 50 random games from the position on the board to estimate what usually happens, including how often a pawn promotes.</p><button class="b" id="sim">Run 50 games</button><div id="simo" class="legend" style="margin-top:8px"></div></div>
+  </div>
+</section>
+<section class="card" id="an">
+<h2>Analyze your own game</h2>
+<p class="mut">Paste a game in PGN format (Lichess, Chess.com and most chess apps can export it) or upload a .pgn file. The game stays in your browser and is not uploaded anywhere.</p>
+<textarea id="pgn" rows="5" placeholder="1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 ..." aria-label="Game moves in PGN format"></textarea>
+<div class="ctl"><button class="b" id="ld">Analyze game</button><button class="b" id="up">Upload .pgn file</button><button class="b" id="smp">Try a sample game</button><input type="file" id="fl" accept=".pgn,.txt" hidden></div>
+<div id="anout"></div>
+</section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+if(typeof Chess==="undefined"){$("ttl").textContent="Could not load the chess engine. Check your connection and reload.";}
+else{
+const F="abcdefgh",SQ=(i,j)=>F[j]+(8-i),ORD="pnbrqk";
+const NM={p:"Pawn",n:"Knight",b:"Bishop",r:"Rook",q:"Queen",k:"King"};
+const GL={k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟"};
+const gl=t=>GL[t]+"\uFE0E";
+const pct=(a,N)=>N?(a*100/N).toFixed(1).replace(".0","")+"%":"0%";
+const tot=o=>Object.values(o).reduce((x,y)=>x+y.n,0);
+const col=t=>t==="p"?"var(--pawn)":"var(--kn)";
+let g=new Chess(),sel=null,lastM=null,chg=null,timer=null,SM=false,flip=false,snd=false,qkey="",bn=false,hint=null,heat=false,cnt=[20];
+const VAL={p:1,n:3,b:3,r:5,q:9};
+const Ws=m=>{let w=1;if(m.captured)w+=2+VAL[m.captured];if(m.promotion==="q")w+=8;if(/[kq]/.test(m.flags))w+=3;if(m.piece==="p"&&/^[de][45]$/.test(m.to))w+=2;if((m.piece==="n"||m.piece==="b")&&m.from[1]===(m.color==="w"?"1":"8"))w+=1.5;if(m.san.includes("+"))w+=1.5;if(m.san.includes("#"))w+=50;return w;};
+const W=m=>SM?Ws(m):1;
+const ws=a=>a.reduce((x,m)=>x+W(m),0);
+
+function sideCounts(g0,color){
+  let gg=g0;
+  try{
+    if(g0.turn()!==color){const p=g0.fen().split(" ");p[1]=color;p[3]="-";gg=new Chess(p.join(" "));}
+    const c={};
+    gg.board().forEach((r,i)=>r.forEach((p,j)=>{if(p&&p.color===color)c[SQ(i,j)]={t:p.type,n:0,w:0};}));
+    gg.moves({verbose:true}).forEach(m=>{if(c[m.from]){c[m.from].n++;c[m.from].w+=W(m);}});
+    return c;
+  }catch(e){return null;}
+}
+
+function render(){
+  const mv=g.moves({verbose:true}),N=mv.length,T=ws(mv),turn=g.turn(),side=turn==="w"?"White":"Black";
+  const by={};mv.forEach(m=>(by[m.from]=by[m.from]||[]).push(m));
+  const bd=$("board");bd.innerHTML="";const cells=[];const dw={};mv.forEach(m=>dw[m.to]=(dw[m.to]||0)+W(m));const hmx=Math.max(0,...Object.values(dw));
+  g.board().forEach((row,i)=>row.forEach((p,j)=>{
+    const s=SQ(i,j),b=document.createElement("button");
+    b.className="sq"+((i+j)%2?" d":"")+(sel===s?" sel":"")+(lastM&&(lastM.from===s||lastM.to===s)?" last":"")+(hint&&hint.fen===g.fen()&&(hint.from===s||hint.to===s)?" hint":"");
+    b.setAttribute("aria-label",s+(p?" "+NM[p.type]:""));
+    if(heat&&dw[s]){b.classList.add("hm");b.style.setProperty("--h",(dw[s]/hmx).toFixed(2));}
+    if(p)b.innerHTML='<span class="'+(p.color==="w"?"white":"black")+'">'+gl(p.type)+'</span>';
+    if(!sel&&bn&&by[s])b.innerHTML+='<em class="bg">'+pct(ws(by[s]),T)+'</em>';
+    {const L=flip?j===7:j===0,B=flip?i===0:i===7;if(L)b.insertAdjacentHTML("beforeend",'<b class="rk">'+(8-i)+'</b>');if(B)b.insertAdjacentHTML("beforeend",'<b class="fl">'+F[j]+'</b>');}
+    if(sel){
+      const t=(by[sel]||[]).filter(m=>m.to===s);
+      if(t.length){const d=document.createElement("div");d.className="dot "+(g.get(sel).type==="p"?"pw":"kn")+(p?" cap":"");d.innerHTML="<i>"+pct(ws(t),T)+"</i>";b.appendChild(d);}
+    }
+    b.onclick=()=>{
+      if(sel){const t=(by[sel]||[]).filter(m=>m.to===s);if(t.length){play(t.find(m=>!m.promotion||m.promotion==="q"));return;}}
+      sel=(by[s]&&sel!==s)?s:null;render();
+    };
+    cells.push(b);
+  }));
+  (flip?cells.reverse():cells).forEach(c=>bd.appendChild(c));
+  const pk=g.fen();if(pk!==qkey){qkey=pk;quiz();$("bmo").textContent="";cnt=counts();}
+
+  // panel: every piece of the side to move
+  const cn=sideCounts(g,turn)||{};
+  const list=Object.keys(cn).map(s=>({s,t:cn[s].t,n:cn[s].n,w:cn[s].w}))
+    .sort((a,b)=>ORD.indexOf(a.t)-ORD.indexOf(b.t)||a.s.localeCompare(b.s));
+  if(N===0){$("ttl").textContent=g.in_checkmate()?"Checkmate. "+side+" has no moves.":"Game over: "+(g.in_stalemate()?"stalemate.":"draw.");}
+  else $("ttl").textContent=side+" to move: "+N+" legal moves"+(SM?"":", each "+pct(1,N));
+  const sum={};list.forEach(x=>sum[x.t]=(sum[x.t]||0)+x.w);
+  $("stack").innerHTML='<div class="stack">'+ORD.split("").filter(t=>sum[t]).map(t=>'<span style="flex:'+sum[t]+';background:'+col(t)+'">'+(sum[t]/T>.09?NM[t]+" "+pct(sum[t],T):"")+'</span>').join("")+'</div><div class="legend">'+ORD.split("").filter(t=>sum[t]).map(t=>NM[t]+"s "+pct(sum[t],T)).join(" · ")+'</div>';
+  $("rows").innerHTML=list.map(x=>'<div class="row"><span class="nm">'+gl(x.t)+" "+NM[x.t]+" "+x.s+'</span><div class="trk"><div class="fill" style="width:'+(T?x.w*100/T:0)+'%;background:'+col(x.t)+';color:'+col(x.t)+'"></div></div><span class="v">'+(x.n?pct(x.w,T)+' <span class="mut">('+x.n+')</span>':'<span class="mut">blocked</span>')+'</span></div>').join("");
+
+  $("donut").innerHTML=donut(sum,T,N);$("lc").innerHTML=lineChart(cnt);
+  // what changed after the last move
+  const cb=$("chgbox");
+  if(!chg){cb.innerHTML="<h2>What changes when a piece moves?</h2><p class='mut'>Play a move. You will see which of your other pieces gained or lost options because of it, and the list above switches to the other side.</p>";}
+  else{
+    const who=chg.c==="w"?"White":"Black";
+    let h="<h2>After "+chg.san+": "+who+"'s options</h2><p class='legend'>Total legal moves for "+who+": "+chg.tb+" → "+chg.ta+"</p>";
+    const others=chg.ch.filter(x=>!x.mv);
+    h+=chg.ch.filter(x=>x.mv).map(x=>'<div class="chg"><span>'+gl(x.t)+" "+NM[x.t]+" "+x.s+" → "+x.ns+'</span><span>'+x.a+" → "+x.b+" moves</span></div>").join("");
+    h+=others.map(x=>'<div class="chg"><span>'+gl(x.t)+" "+NM[x.t]+" "+x.s+'</span><span class="'+(x.b>x.a?"up":"dn")+'">'+x.a+" → "+x.b+" moves</span></div>").join("");
+    if(!others.length)h+="<p class='legend' style='margin-top:8px'>No other "+who+" piece changed.</p>";
+    const gn=others.filter(x=>x.b>x.a).map(x=>NM[x.t]+" "+x.s),ls=others.filter(x=>x.b<x.a).map(x=>NM[x.t]+" "+x.s);
+    if(gn.length||ls.length)h+="<p style='margin-top:8px;font-size:.9rem'><b>Why:</b> this move "+(gn.length?"opened lines for "+gn.join(", "):"")+(gn.length&&ls.length?" and ":"")+(ls.length?"blocked "+ls.join(", "):"")+".</p>";
+    cb.innerHTML=h;
+  }
+  $("hist").textContent=g.history().join(" ");
+}
+
+function play(m){beep();
+  const c=g.turn(),bf=sideCounts(g,c);
+  g.move({from:m.from,to:m.to,promotion:m.promotion});
+  const af=sideCounts(g,c);sel=null;lastM=m;chg=null;
+  if(bf&&af){
+    chg={c,san:m.san,tb:tot(bf),ta:tot(af),ch:[]};
+    for(const s in bf){
+      const ns=s===m.from?m.to:s,a=bf[s].n,b=af[ns]?af[ns].n:0;
+      if(s===m.from||a!==b)chg.ch.push({s,ns,t:bf[s].t,a,b,mv:s===m.from});
+    }
+  }
+  render();
+}
+function rand(){const mv=g.moves({verbose:true});if(!mv.length){stop();return;}play(mv[Math.floor(Math.random()*mv.length)]);}
+function stop(){clearInterval(timer);timer=null;$("auto").classList.remove("on");$("auto").textContent="Auto-play";}
+$("rnd").onclick=rand;
+$("auto").onclick=()=>{if(timer){stop();return;}$("auto").classList.add("on");$("auto").textContent="Stop";timer=setInterval(rand,800);};
+$("und").onclick=()=>{stop();g.undo();sel=null;lastM=null;chg=null;render();};
+$("rst").onclick=()=>{stop();g=new Chess();sel=null;lastM=null;chg=null;render();};
+
+/* ---- game analysis ---- */
+let A=null,ply=0;
+const esc=x=>String(x).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pf=v=>(v*100).toFixed(1).replace(".0","")+"%";
+function analyze(txt){
+  const out=$("anout"),t=new Chess();
+  if(!txt.trim()||!t.load_pgn(txt,{sloppy:true})||!t.history().length){
+    A=null;out.innerHTML="<p class='dn'>Could not read that game. Paste the moves in PGN format, for example: 1. e4 e5 2. Nf3 Nc6</p>";return;}
+  const hd=t.header(),mv=t.history({verbose:true}),r=new Chess(),d=[];
+  const S={w:{n:0,pp:0,pe:0,cp:0,ce:0,sum:0},b:{n:0,pp:0,pe:0,cp:0,ce:0,sum:0}};
+  mv.forEach(m=>{
+    const all=r.moves({verbose:true}),N=all.length,c=r.turn(),s=S[c],tw=all.reduce((a,x)=>a+Ws(x),0);
+    d.push({m,N,same:all.filter(x=>x.from===m.from).length,c,sp:Ws(m)/tw});
+    s.n++;s.sum+=N;s.pe+=all.filter(x=>x.piece==="p").length/N;s.ce+=all.filter(x=>x.captured).length/N;
+    if(m.piece==="p")s.pp++;if(m.captured)s.cp++;
+    r.move({from:m.from,to:m.to,promotion:m.promotion});
+  });
+  A={mv,d};
+  const mx=Math.max(...d.map(x=>x.N)),CW=d.length*8,Y=x=>110-x.N/mx*96;
+  const bars=d.map((x,i)=>'<rect data-i="'+i+'" x="'+(i*8)+'" width="6" rx="2" y="'+Y(x)+'" height="'+(x.N/mx*96)+'" fill="'+col(x.m.piece)+'"><title>'+esc(x.m.san)+": "+x.N+" options</title></rect>").join("");
+  const line='<polyline fill="none" stroke="var(--ink)" stroke-width="1.2" opacity=".55" points="'+d.map((x,i)=>(i*8+3)+","+Y(x)).join(" ")+'"/>';
+  const dots=d.map((x,i)=>x.m.captured?'<circle cx="'+(i*8+3)+'" cy="4" r="2.4" fill="var(--ac)"/>':x.m.san.includes("+")?'<circle cx="'+(i*8+3)+'" cy="4" r="2.4" fill="var(--dn)"/>':"").join("");
+  const side=(k,nm)=>{const s=S[k];if(!s.n)return"";return '<div class="side"><b>'+nm+'</b><div class="n">'+(s.sum/s.n).toFixed(1)+'</div><div class="legend">average options per move</div><p style="margin:8px 0 0;font-size:.9rem">Pawn moves: <b>'+s.pp+'</b> of '+s.n+' (random play: about '+s.pe.toFixed(1)+')<br>Captures: <b>'+s.cp+'</b> (random play: about '+s.ce.toFixed(1)+')</p></div>';};
+  const ix=d.map((x,i)=>i),most=[...ix].sort((a,b)=>d[b].N-d[a].N).slice(0,3),rare=[...ix].sort((a,b)=>d[a].sp*d[a].N-d[b].sp*d[b].N).filter(i=>!most.includes(i)).slice(0,3);
+  const kb=(i,l)=>'<button class="b" data-k="'+(i+1)+'">'+l+': '+Math.ceil((i+1)/2)+(d[i].c==="w"?". ":"... ")+esc(d[i].m.san)+'</button>';
+  out.innerHTML=(hd.White||hd.Black?'<p><b>'+esc(hd.White||"White")+'</b> vs <b>'+esc(hd.Black||"Black")+'</b>'+(hd.Result?' · '+esc(hd.Result):'')+'</p>':'')
+   +'<div class="sides">'+side("w","White")+side("b","Black")+'</div>'
+   +'<h2>Options on every move</h2><p class="legend">Taller bar = more legal moves. Green = pawn move played, purple = another piece. The line follows the bar tops. Amber dot = capture, red dot = check. Tap a bar to jump there.</p>'
+   +'<svg id="chart" viewBox="0 0 '+CW+' 112" preserveAspectRatio="none" role="img" aria-label="Legal moves per turn">'+bars+line+dots+'</svg>'
+   +'<h2>Key moments</h2><p class="legend">Most choices = turns with the most legal moves. Unexpected = moves the smart-player model rated least likely.</p><div class="ctl" id="km">'+most.map(i=>kb(i,"Most choices")).join("")+rare.map(i=>kb(i,"Unexpected")).join("")+'</div>'
+   +'<div class="nav"><button class="b" id="n0" aria-label="Start">⏮</button><button class="b" id="n1" aria-label="Back">◀</button><button class="b" id="n2" aria-label="Forward">▶</button><button class="b" id="n3" aria-label="End">⏭</button><input type="range" id="sr" min="0" max="'+d.length+'" value="0" aria-label="Move number"></div><div id="plyinfo"></div>';
+  $("chart").onclick=e=>{if(e.target.dataset.i!==undefined)gotoPly(+e.target.dataset.i+1);};
+  $("km").onclick=e=>{const k=e.target.dataset.k;if(k)gotoPly(+k);};
+  $("n0").onclick=()=>gotoPly(0);$("n1").onclick=()=>gotoPly(ply-1);
+  $("n2").onclick=()=>gotoPly(ply+1);$("n3").onclick=()=>gotoPly(d.length);
+  $("sr").oninput=e=>gotoPly(+e.target.value);
+  gotoPly(0);
+}
+function gotoPly(k){
+  if(!A)return;stop();
+  k=Math.max(0,Math.min(A.mv.length,k));
+  g=new Chess();
+  for(let i=0;i<k;i++){const m=A.mv[i];g.move({from:m.from,to:m.to,promotion:m.promotion});}
+  ply=k;sel=null;lastM=k?A.mv[k-1]:null;chg=null;render();
+  $("sr").value=k;
+  document.querySelectorAll("#chart rect").forEach((r,i)=>r.style.opacity=(i===k-1||k===0)?1:.3);
+  if(!k){$("plyinfo").textContent="Start position. Press ▶ or the right arrow key to step through your game.";return;}
+  const x=A.d[k-1];
+  $("plyinfo").innerHTML=Math.ceil(k/2)+(x.c==="w"?". ":"... ")+esc(x.m.san)+' was 1 of '+x.N+' legal moves: a '+pct(1,x.N)+' chance at random ('+pf(x.sp)+' for the smart-player model). The piece that moved had '+x.same+' of those options ('+pct(x.same,x.N)+').<br><span class="legend">The panel above shows the chances for the next player from this position.</span>';
+}
+const SAMPLE="[White \"Paul Morphy\"]\n[Black \"Duke of Brunswick and Count Isouard\"]\n[Result \"1-0\"]\n\n1. e4 e5 2. Nf3 d6 3. d4 Bg4 4. dxe5 Bxf3 5. Qxf3 dxe5 6. Bc4 Nf6 7. Qb3 Qe7 8. Nc3 c6 9. Bg5 b5 10. Nxb5 cxb5 11. Bxb5+ Nbd7 12. O-O-O Rd8 13. Rxd7 Rxd7 14. Rd1 Qe6 15. Bxd7+ Nxd7 16. Qb8+ Nxb8 17. Rd8# 1-0";
+$("ld").onclick=()=>analyze($("pgn").value);
+$("smp").onclick=()=>{$("pgn").value=SAMPLE;analyze(SAMPLE);};
+$("up").onclick=()=>$("fl").click();
+$("fl").onchange=e=>{const f=e.target.files[0];if(!f)return;const fr=new FileReader();fr.onload=()=>{$("pgn").value=fr.result;analyze(fr.result);};fr.readAsText(f);};
+
+/* ---- modes, themes, sound, quiz, simulation ---- */
+function setMode(v){SM=v;$("mR").classList.toggle("on",!v);$("mS").classList.toggle("on",v);
+ $("mnote").textContent=v?"Smart player: captures, center pawns, developing moves, castling, checks and promotions get extra weight, so chances are no longer equal.":"Random player: every legal move is equally likely.";render();}
+$("mR").onclick=()=>setMode(false);$("mS").onclick=()=>setMode(true);
+$("flp").onclick=()=>{flip=!flip;render();};
+const BT=[["indigo","Indigo"],["wood","Wood"],["mono","Mono"]];let bi=0;
+$("bth").onclick=()=>{bi=(bi+1)%3;$("board").dataset.t=BT[bi][0];$("bth").textContent="Board: "+BT[bi][1];};
+let dark=!!(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);
+function applyTheme(){document.documentElement.dataset.theme=dark?"dark":"light";$("thm").textContent=dark?"Light mode":"Dark mode";}
+$("thm").onclick=()=>{dark=!dark;applyTheme();};applyTheme();
+let ac=null;
+function beep(){if(!snd)return;try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),gn=ac.createGain();o.frequency.value=320;gn.gain.value=.08;o.connect(gn);gn.connect(ac.destination);o.start();gn.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.12);o.stop(ac.currentTime+.12);}catch(e){}}
+$("bnb").onclick=()=>{bn=!bn;$("bnb").textContent="Board numbers: "+(bn?"on":"off");render();};
+$("snd").onclick=()=>{snd=!snd;$("snd").textContent="Sound: "+(snd?"on":"off");beep();};
+document.addEventListener("keydown",e=>{if(/INPUT|TEXTAREA/.test(e.target.tagName))return;
+ if(e.key==="ArrowLeft"){e.preventDefault();if(A)gotoPly(ply-1);else $("und").click();}
+ if(e.key==="ArrowRight"){e.preventDefault();if(A)gotoPly(ply+1);else rand();}});
+function quiz(){
+  const mv=g.moves({verbose:true}),N=mv.length;$("qf").textContent="";$("qo").innerHTML="";
+  if(!N){$("qq").textContent="No legal moves here. Undo or reset to get a question.";return;}
+  const c=sideCounts(g,g.turn()),ks=Object.keys(c).filter(k=>c[k].n>0),k=ks[Math.floor(Math.random()*ks.length)];
+  const n=c[k].n,fmt=v=>v.toFixed(1).replace(".0","")+"%",right=fmt(n/N*100),set=new Set([right]);
+  [n+1,n+2,Math.max(1,n-1),n*2,n+3].forEach(x=>{if(set.size<4&&x!==n&&x>0&&x<=N)set.add(fmt(x/N*100));});
+  $("qq").textContent=(g.turn()==="w"?"White":"Black")+" plays a random legal move. What is the chance it is the "+NM[c[k].t]+" on "+k+"? It has "+n+" of the "+N+" legal moves.";
+  [...set].sort(()=>Math.random()-.5).forEach(o=>{const b=document.createElement("button");b.className="b";b.textContent=o;
+    b.onclick=()=>{$("qf").innerHTML=o===right?"<span class='up'>Correct.</span> "+n+" ÷ "+N+" = "+right:"<span class='dn'>Not quite.</span> "+n+" ÷ "+N+" = "+right;};$("qo").appendChild(b);});
+}
+$("sim").onclick=()=>{
+  const base=g.fen(),out=$("simo"),R={n:0,pro:0,mate:0,draw:0,cap:0,pl:0},TOT=50;
+  $("sim").disabled=true;
+  const step=()=>{
+    for(let k=0;k<3&&R.n<TOT;k++){
+      const s=new Chess(base);let p=0,pro=false,end="cap";
+      while(p<250){
+        const mv=s.moves({verbose:true});
+        if(!mv.length){end=s.in_checkmate()?"mate":"draw";break;}
+        if(p%4===0&&s.in_draw()){end="draw";break;}
+        const m=mv[Math.floor(Math.random()*mv.length)];
+        if(m.promotion)pro=true;
+        s.move({from:m.from,to:m.to,promotion:m.promotion});p++;
+      }
+      R.n++;R.pl+=p;if(pro)R.pro++;R[end]++;
+    }
+    out.textContent="Played "+R.n+" of "+TOT+" games...";
+    if(R.n<TOT)return setTimeout(step,0);
+    const f=v=>Math.round(v/TOT*100)+"%";
+    const parts=[];if(R.mate)parts.push("Checkmate: "+f(R.mate));if(R.draw)parts.push("Draw: "+f(R.draw));if(R.cap)parts.push("Reached the 250-move limit: "+f(R.cap));
+    out.innerHTML="<b>Results from this position (random play, "+TOT+" games):</b><br>"+(R.pro?"A pawn promoted in <b>"+f(R.pro)+"</b> of games. ":"No pawn promoted in these games. ")+parts.join(". ")+(parts.length?". ":"")+"Average length: "+Math.round(R.pl/TOT)+" moves.";
+    $("sim").disabled=false;
+  };
+  step();
+};
+/* ---- built-in engine: look ahead + score ---- */
+const PV={p:100,n:320,b:330,r:500,q:900,k:0},DEPTH=3;
+const mo=m=>(m.captured?PV[m.captured]*10-PV[m.piece]:0)+(m.promotion?800:0);
+const order=ms=>ms.sort((x,y)=>mo(y)-mo(x));
+function evalPos(c){
+  if(c.in_checkmate())return c.turn()==="w"?-99999:99999;
+  if(c.in_draw())return 0;
+  let v=0;
+  c.board().forEach((row,i)=>row.forEach((p,j)=>{
+    if(!p)return;
+    let x=PV[p.type];
+    if(p.type==="p")x+=(p.color==="w"?6-i:i-1)*5;
+    if(p.type!=="k"&&p.type!=="r")x+=((3.5-Math.abs(j-3.5))+(3.5-Math.abs(i-3.5)))*4;
+    if(p.type==="p"&&(j===3||j===4))x+=8;
+    if((p.type==="n"||p.type==="b")&&i===(p.color==="w"?7:0))x-=12;
+    v+=p.color==="w"?x:-x;
+  }));
+  return v;
+}
+function search(c,d,a,b){
+  if(d===0)return (c.turn()==="w"?1:-1)*evalPos(c);
+  const ms=order(c.moves({verbose:true}));
+  if(!ms.length)return c.in_checkmate()?-99999-d:0;
+  for(const m of ms){
+    c.move({from:m.from,to:m.to,promotion:m.promotion});
+    const s=-search(c,d-1,-b,-a);
+    c.undo();
+    if(s>=b)return b;
+    if(s>a)a=s;
+  }
+  return a;
+}
+function bestMoves(fen,n){
+  const c=new Chess(fen),res=[];
+  for(const m of order(c.moves({verbose:true}))){
+    c.move({from:m.from,to:m.to,promotion:m.promotion});
+    const lo=res.length<n?-1e9:res[n-1].s,s=-search(c,DEPTH-1,-1e9,-lo);
+    c.undo();
+    if(res.length<n||s>lo){res.push({m,s});res.sort((x,y)=>y.s-x.s);res.length=Math.min(res.length,n);}
+  }
+  return res;
+}
+
+const fs2=s=>Math.abs(s)>90000?(s>0?"checkmate":"loses to mate"):(s>=0?"+":"")+(s/100).toFixed(1);
+$("bst").onclick=()=>{
+  const o=$("bmo");o.textContent="Thinking...";$("bst").disabled=true;
+  setTimeout(()=>{
+    const fen=g.fen(),res=bestMoves(fen,3);
+    if(!res.length){o.textContent="No legal moves here.";}
+    else{
+      const b=res[0].m;hint={fen,from:b.from,to:b.to};
+      const why=[b.captured?"captures a "+NM[b.captured].toLowerCase():"",b.san.includes("#")?"gives checkmate":b.san.includes("+")?"gives check":"",/[kq]/.test(b.flags)?"castles":"",b.promotion?"promotes a pawn":""].filter(Boolean).join(", ")||"improves the position (center control and development)";
+      o.innerHTML=res.map((r,i)=>'<div class="chg"><span>'+(i===0?"Best: ":(i+1)+". ")+'<b>'+r.m.san+'</b></span><span class="'+(r.s>=0?"up":"dn")+'">'+fs2(r.s)+'</span></div>').join("")+'<p class="legend" style="margin-top:8px">Why the top move: it '+why+'. A score of +1.0 means the side to move is about one pawn ahead. The best move is outlined in green on the board.</p>';
+      render();
+    }
+    $("bst").disabled=false;
+  },30);
+};
+
+/* ---- graphs ---- */
+const TC={p:"var(--pawn)",n:"var(--kn)",b:"var(--ac)",r:"#e0709a",q:"#4c9be8",k:"var(--dk)"};
+function donut(sum,T,N){
+  if(!T)return"<p class='legend'>No moves</p>";
+  let off=0,seg="",lg="";
+  ORD.split("").filter(t=>sum[t]).forEach(t=>{
+    const p=sum[t]/T*100;
+    seg+='<circle r="15.9155" cx="21" cy="21" fill="none" stroke="'+TC[t]+'" stroke-width="7" stroke-dasharray="'+p+' '+(100-p)+'" stroke-dashoffset="'+(25-off)+'"><title>'+NM[t]+" "+pct(sum[t],T)+'</title></circle>';
+    lg+='<li><i style="background:'+TC[t]+'"></i>'+NM[t]+"s "+pct(sum[t],T)+'</li>';off+=p;});
+  return '<div class="dnt"><svg viewBox="0 0 42 42" width="140" height="140" role="img" aria-label="Chance by piece type"><circle r="15.9155" cx="21" cy="21" fill="none" stroke="var(--ln)" stroke-width="7"/>'+seg+'<text x="21" y="22" text-anchor="middle" font-size="7" font-weight="800" fill="var(--ink)">'+N+'</text><text x="21" y="27" text-anchor="middle" font-size="3" fill="var(--mut)">legal moves</text></svg><ul>'+lg+'</ul></div>';
+}
+function counts(){const r=new Chess(),c=[r.moves().length];g.history({verbose:true}).forEach(m=>{r.move({from:m.from,to:m.to,promotion:m.promotion});c.push(r.moves().length);});return c;}
+function lineChart(c){
+  const n=c.length,mx=Math.max(...c,20),X=i=>n>1?6+i*(288/(n-1)):150,Y=v=>92-v/mx*78,pts=c.map((v,i)=>X(i)+","+Y(v)).join(" ");
+  return '<svg viewBox="0 0 300 106" width="100%" role="img" aria-label="Legal moves at each turn"><line x1="6" y1="92" x2="294" y2="92" stroke="var(--ln)"/>'
+   +(n>1?'<polygon points="'+X(0)+',92 '+pts+' '+X(n-1)+',92" fill="var(--kn)" opacity=".16"/><polyline points="'+pts+'" fill="none" stroke="var(--kn)" stroke-width="2" stroke-linejoin="round"/>':"")
+   +'<circle cx="'+X(n-1)+'" cy="'+Y(c[n-1])+'" r="4" fill="var(--pawn)"/><text x="'+X(n-1)+'" y="'+(Y(c[n-1])-8)+'" font-size="9" font-weight="700" text-anchor="'+(n>4?"end":"middle")+'" fill="var(--ink)">'+c[n-1]+'</text>'
+   +'<text x="6" y="104" font-size="8" fill="var(--mut)">start</text><text x="294" y="104" font-size="8" text-anchor="end" fill="var(--mut)">move '+(n-1)+'</text></svg>';
+}
+$("hmb").onclick=()=>{heat=!heat;$("hmb").textContent="Heatmap: "+(heat?"on":"off");render();};
+setMode(false);
+render();
+}
+</script>
+</body>
+</html>
